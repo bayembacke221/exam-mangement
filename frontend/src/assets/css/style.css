@@ -1,0 +1,68 @@
+body {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.shadow-sm {
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
+}
+
+/* Styles pour les cartes */
+.card {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0,0,0,.125);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+
+/* Styles pour les tableaux */
+.table {
+    margin-bottom: 0;
+}
+
+/* Styles pour les formulaires */
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Styles pour les boutons */
+.btn {
+    border-radius: 0.25rem;
+}
+
+/* Styles pour la navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* Styles pour les alertes */
+.alert {
+    border-radius: 0.375rem;
+}
+
+/* Animation de chargement */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner-border {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    vertical-align: text-bottom;
+    border: 0.25em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin .75s linear infinite;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+}
