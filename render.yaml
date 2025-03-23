@@ -1,0 +1,52 @@
+services:
+  # Service Web (API backend)
+  - type: web
+    name: exam-management-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true  # Génère une valeur aléatoire sécurisée
+      - key: DB_HOST
+        fromDatabase:
+          name: exam-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: exam-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: exam-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: exam-db
+          property: database
+      - key: DB_PORT
+        fromDatabase:
+          name: exam-db
+          property: port
+
+  # Service Web (frontend)
+  - type: web
+    name: exam-management-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://exam-management-api.onrender.com/api
+
+# Base de données PostgreSQL
+databases:
+  - name: exam-db
+    plan: free  # Plan gratuit de Render
+    ipAllowList: []  # Accès ouvert à tout IP

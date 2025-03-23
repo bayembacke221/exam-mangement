@@ -15,8 +15,8 @@ exports.getAllExams = async (req, res) => {
 
         query += "ORDER BY e.date_limite DESC";
 
-        const [exams] = await db.execute(query);
-        res.json(exams);
+        const { rows } = await db.execute(query);
+        res.json(rows);
     } catch (error) {
         console.error("Erreur lors de la récupération des examens:", error);
         res.status(500).json({ error: "Erreur serveur" });
@@ -28,18 +28,18 @@ exports.getExamById = async (req, res) => {
     try {
         const examId = req.params.id;
 
-        const [exams] = await db.execute(
+        const { rows } = await db.execute(
             "SELECT e.*, u.nom as enseignant_nom, u.prenom as enseignant_prenom FROM exams e " +
             "JOIN users u ON e.enseignant_id = u.id " +
-            "WHERE e.id = ?",
+            "WHERE e.id = $1",
             [examId]
         );
 
-        if (exams.length === 0) {
+        if (rows.length === 0) {
             return res.status(404).json({ error: "Examen non trouvé" });
         }
 
-        const exam = exams[0];
+        const exam = rows[0];
 
         // Vérifier les droits d'accès
         if (req.user.role === 'etudiant' && exam.statut !== 'publié') {
@@ -60,12 +60,12 @@ exports.createExam = async (req, res) => {
     const fichier_url = req.file ? `/uploads/exams/${req.file.filename}` : null;
 
     try {
-        const sql = "INSERT INTO exams (titre, fichier_url, date_limite, description, statut, enseignant_id) VALUES (?, ?, ?, ?, ?, ?)";
-        const [result] = await db.execute(sql, [titre, fichier_url, date_limite, description, statut, enseignant_id]);
+        const sql = "INSERT INTO exams (titre, fichier_url, date_limite, description, statut, enseignant_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id";
+        const result = await db.execute(sql, [titre, fichier_url, date_limite, description, statut, enseignant_id]);
 
         res.status(201).json({
             message: "Examen créé avec succès !",
-            id: result.insertId
+            id: result.rows[0].id
         });
     } catch (error) {
         console.error("Erreur lors de la création de l'examen :", error);
@@ -80,16 +80,16 @@ exports.updateExam = async (req, res) => {
 
     try {
         // Vérifier que l'enseignant est bien le créateur de l'examen
-        const [exams] = await db.execute(
-            "SELECT * FROM exams WHERE id = ? AND enseignant_id = ?",
+        const { rows } = await db.execute(
+            "SELECT * FROM exams WHERE id = $1 AND enseignant_id = $2",
             [examId, req.user.id]
         );
 
-        if (exams.length === 0) {
+        if (rows.length === 0) {
             return res.status(403).json({ error: "Vous n'êtes pas autorisé à modifier cet examen" });
         }
 
-        const exam = exams[0];
+        const exam = rows[0];
         let fichier_url = exam.fichier_url;
 
         // Si un nouveau fichier est fourni, supprimer l'ancien et utiliser le nouveau
@@ -105,7 +105,7 @@ exports.updateExam = async (req, res) => {
 
         // Mettre à jour l'examen
         await db.execute(
-            "UPDATE exams SET titre = ?, fichier_url = ?, date_limite = ?, description = ?, statut = ? WHERE id = ?",
+            "UPDATE exams SET titre = $1, fichier_url = $2, date_limite = $3, description = $4, statut = $5 WHERE id = $6",
             [titre, fichier_url, date_limite, description, statut, examId]
         );
 
@@ -122,16 +122,16 @@ exports.deleteExam = async (req, res) => {
 
     try {
         // Vérifier que l'enseignant est bien le créateur de l'examen
-        const [exams] = await db.execute(
-            "SELECT * FROM exams WHERE id = ? AND enseignant_id = ?",
+        const { rows } = await db.execute(
+            "SELECT * FROM exams WHERE id = $1 AND enseignant_id = $2",
             [examId, req.user.id]
         );
 
-        if (exams.length === 0) {
+        if (rows.length === 0) {
             return res.status(403).json({ error: "Vous n'êtes pas autorisé à supprimer cet examen" });
         }
 
-        const exam = exams[0];
+        const exam = rows[0];
 
         // Supprimer le fichier associé s'il existe
         if (exam.fichier_url) {
@@ -142,7 +142,7 @@ exports.deleteExam = async (req, res) => {
         }
 
         // Supprimer l'examen
-        await db.execute("DELETE FROM exams WHERE id = ?", [examId]);
+        await db.execute("DELETE FROM exams WHERE id = $1", [examId]);
 
         res.json({ message: "Examen supprimé avec succès !" });
     } catch (error) {

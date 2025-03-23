@@ -8,7 +8,7 @@ exports.register = async (req, res) => {
 
     try {
         // Vérifier si l'utilisateur existe déjà
-        const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows } = await db.execute('SELECT * FROM users WHERE email = $1', [email]);
         if (rows.length > 0) {
             return res.status(400).json({ error: 'Cet email est déjà utilisé.' });
         }
@@ -17,12 +17,12 @@ exports.register = async (req, res) => {
         const hashedMdp = await bcrypt.hash(mdp, 10);
 
         // Insérer l'utilisateur dans la base de données
-        await db.execute(
-            'INSERT INTO users (nom, prenom, email, mdp, classe, role) VALUES (?, ?, ?, ?, ?, ?)',
+        const result = await db.execute(
+            'INSERT INTO users (nom, prenom, email, mdp, classe, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
             [nom, prenom, email, hashedMdp, classe, role]
         );
 
-        res.status(201).json({ message: 'Utilisateur enregistré avec succès !' });
+        res.status(201).json({ message: 'Utilisateur enregistré avec succès !', id: result.rows[0].id });
     } catch (error) {
         console.error('Erreur lors de l\'inscription :', error);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -34,7 +34,7 @@ exports.login = async (req, res) => {
     const { email, mdp } = req.body;
 
     try {
-        const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows } = await db.execute('SELECT * FROM users WHERE email = $1', [email]);
         if (rows.length === 0) return res.status(400).json({ error: "Utilisateur non trouvé !" });
 
         const user = rows[0];
@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
 // Obtenir le profil de l'utilisateur connecté
 exports.getProfile = async (req, res) => {
     try {
-        const [rows] = await db.execute('SELECT id, nom, prenom, email, classe, role FROM users WHERE id = ?', [req.user.id]);
+        const { rows } = await db.execute('SELECT id, nom, prenom, email, classe, role FROM users WHERE id = $1', [req.user.id]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: "Utilisateur non trouvé" });

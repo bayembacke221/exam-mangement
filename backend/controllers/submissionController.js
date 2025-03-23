@@ -10,17 +10,17 @@ exports.getAllSubmissions = async (req, res) => {
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        const [submissions] = await db.execute(
+        const { rows } = await db.execute(
             "SELECT s.*, u.nom as etudiant_nom, u.prenom as etudiant_prenom, " +
             "e.titre as exam_titre FROM soumissions s " +
             "JOIN users u ON s.etudiant_id = u.id " +
             "JOIN exams e ON s.examen_id = e.id " +
-            "WHERE e.enseignant_id = ? " +
+            "WHERE e.enseignant_id = $1 " +
             "ORDER BY s.date_soumission DESC",
             [req.user.id]
         );
 
-        res.json(submissions);
+        res.json(rows);
     } catch (error) {
         console.error("Erreur lors de la récupération des soumissions:", error);
         res.status(500).json({ error: "Erreur serveur" });
@@ -34,8 +34,8 @@ exports.getSubmissionsByExam = async (req, res) => {
 
         // Vérifier si l'utilisateur est autorisé à voir les soumissions
         if (req.user.role === 'enseignant') {
-            const [exams] = await db.execute(
-                "SELECT * FROM exams WHERE id = ? AND enseignant_id = ?",
+            const { rows: exams } = await db.execute(
+                "SELECT * FROM exams WHERE id = $1 AND enseignant_id = $2",
                 [examId, req.user.id]
             );
 
@@ -43,25 +43,25 @@ exports.getSubmissionsByExam = async (req, res) => {
                 return res.status(403).json({ error: "Vous n'êtes pas autorisé à voir ces soumissions" });
             }
 
-            const [submissions] = await db.execute(
+            const { rows } = await db.execute(
                 "SELECT s.*, u.nom as etudiant_nom, u.prenom as etudiant_prenom FROM soumissions s " +
                 "JOIN users u ON s.etudiant_id = u.id " +
-                "WHERE s.examen_id = ? " +
+                "WHERE s.examen_id = $1 " +
                 "ORDER BY s.date_soumission DESC",
                 [examId]
             );
 
-            res.json(submissions);
+            res.json(rows);
         } else {
             // Pour les étudiants, on ne renvoie que leurs propres soumissions
-            const [submissions] = await db.execute(
+            const { rows } = await db.execute(
                 "SELECT s.* FROM soumissions s " +
-                "WHERE s.examen_id = ? AND s.etudiant_id = ? " +
+                "WHERE s.examen_id = $1 AND s.etudiant_id = $2 " +
                 "ORDER BY s.date_soumission DESC",
                 [examId, req.user.id]
             );
 
-            res.json(submissions);
+            res.json(rows);
         }
     } catch (error) {
         console.error("Erreur lors de la récupération des soumissions:", error);
@@ -72,15 +72,15 @@ exports.getSubmissionsByExam = async (req, res) => {
 // Obtenir les soumissions de l'étudiant connecté
 exports.getMySubmissions = async (req, res) => {
     try {
-        const [submissions] = await db.execute(
+        const { rows } = await db.execute(
             "SELECT s.*, e.titre as exam_titre, e.date_limite FROM soumissions s " +
             "JOIN exams e ON s.examen_id = e.id " +
-            "WHERE s.etudiant_id = ? " +
+            "WHERE s.etudiant_id = $1 " +
             "ORDER BY s.date_soumission DESC",
             [req.user.id]
         );
 
-        res.json(submissions);
+        res.json(rows);
     } catch (error) {
         console.error("Erreur lors de la récupération des soumissions:", error);
         res.status(500).json({ error: "Erreur serveur" });
@@ -94,8 +94,8 @@ exports.submitExam = async (req, res) => {
         const etudiant_id = req.user.id;
 
         // Vérifier si l'examen existe et est publié
-        const [exams] = await db.execute(
-            "SELECT * FROM exams WHERE id = ? AND statut = 'publié'",
+        const { rows: exams } = await db.execute(
+            "SELECT * FROM exams WHERE id = $1 AND statut = 'publié'",
             [examen_id]
         );
 
@@ -113,8 +113,8 @@ exports.submitExam = async (req, res) => {
         }
 
         // Vérifier si l'étudiant a déjà soumis une copie
-        const [existingSubmissions] = await db.execute(
-            "SELECT * FROM soumissions WHERE etudiant_id = ? AND examen_id = ?",
+        const { rows: existingSubmissions } = await db.execute(
+            "SELECT * FROM soumissions WHERE etudiant_id = $1 AND examen_id = $2",
             [etudiant_id, examen_id]
         );
 
@@ -130,7 +130,7 @@ exports.submitExam = async (req, res) => {
         }
 
         await db.execute(
-            "INSERT INTO soumissions (etudiant_id, examen_id, fichier_url, date_soumission) VALUES (?, ?, ?, NOW())",
+            "INSERT INTO soumissions (etudiant_id, examen_id, fichier_url, date_soumission) VALUES ($1, $2, $3, NOW()) RETURNING id",
             [etudiant_id, examen_id, fichier_url]
         );
 
@@ -146,20 +146,20 @@ exports.getSubmissionById = async (req, res) => {
     try {
         const submissionId = req.params.id;
 
-        const [submissions] = await db.execute(
+        const { rows } = await db.execute(
             "SELECT s.*, u.nom as etudiant_nom, u.prenom as etudiant_prenom, " +
             "e.titre as exam_titre, e.enseignant_id FROM soumissions s " +
             "JOIN users u ON s.etudiant_id = u.id " +
             "JOIN exams e ON s.examen_id = e.id " +
-            "WHERE s.id = ?",
+            "WHERE s.id = $1",
             [submissionId]
         );
 
-        if (submissions.length === 0) {
+        if (rows.length === 0) {
             return res.status(404).json({ error: "Soumission non trouvée" });
         }
 
-        const submission = submissions[0];
+        const submission = rows[0];
 
         // Vérifier les droits d'accès
         if (req.user.role === 'etudiant' && submission.etudiant_id !== req.user.id) {
@@ -184,18 +184,18 @@ exports.gradeSubmission = async (req, res) => {
         const { note, commentaire } = req.body;
 
         // Vérifier que la soumission existe et que l'enseignant est autorisé
-        const [submissions] = await db.execute(
+        const { rows } = await db.execute(
             "SELECT s.*, e.enseignant_id FROM soumissions s " +
             "JOIN exams e ON s.examen_id = e.id " +
-            "WHERE s.id = ?",
+            "WHERE s.id = $1",
             [submissionId]
         );
 
-        if (submissions.length === 0) {
+        if (rows.length === 0) {
             return res.status(404).json({ error: "Soumission non trouvée" });
         }
 
-        const submission = submissions[0];
+        const submission = rows[0];
 
         if (submission.enseignant_id !== req.user.id) {
             return res.status(403).json({ error: "Vous n'êtes pas autorisé à noter cette soumission" });
@@ -203,7 +203,7 @@ exports.gradeSubmission = async (req, res) => {
 
         // Mettre à jour la note
         await db.execute(
-            "UPDATE soumissions SET note = ?, commentaire = ? WHERE id = ?",
+            "UPDATE soumissions SET note = $1, commentaire = $2 WHERE id = $3",
             [note, commentaire, submissionId]
         );
 
