@@ -11,11 +11,28 @@ const aiRoutes = require('./routes/ai');
 
 const app = express();
 
-// Middleware
+// Liste des origines autorisées
+const allowedOrigins = [
+    'http://localhost:3000',                                         // Développement local
+    'https://exam-mangement.vercel.app',                             // Vercel production
+];
+
+// Middleware CORS avec configuration des origines
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: function(origin, callback) {
+        // Permettre les requêtes sans origine (comme les applications mobiles ou postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('Origine non autorisée:', origin);
+            callback(null, true);
+        }
+    },
     credentials: true
 }));
+
 app.use(express.json());
 
 // Static files middleware
