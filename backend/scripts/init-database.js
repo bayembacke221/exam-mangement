@@ -3,7 +3,7 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs'); // Utilisez bcryptjs au lieu de bcrypt
 
 // Lecture du fichier SQL qui contient le schéma de la base de données
 const schemaSQL = fs.readFileSync(path.join(__dirname, '../schema.sql'), 'utf8');
@@ -92,6 +92,7 @@ async function initDatabase() {
         } else {
             console.log('L\'utilisateur administrateur existe déjà.');
         }
+
         // Libération de la connexion à la base de données
         dbClient.release();
         console.log('Initialisation de la base de données terminée avec succès!');
