@@ -8,7 +8,6 @@ const authRoutes = require('./routes/auth');
 const examRoutes = require('./routes/exams');
 const submissionRoutes = require('./routes/submissions');
 const aiRoutes = require('./routes/ai');
-const db = require('./config/db');
 
 const app = express();
 
@@ -18,14 +17,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-// Accédez au pool via db.pool
-db.pool.query('SELECT current_database(), current_schema()', (err, res) => {
-    if (err) {
-        console.error('Erreur de vérification de la base de données:', err);
-    } else {
-        console.log('Base de données actuelle:', res.rows[0]);
-    }
-});
+
 // Static files middleware
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

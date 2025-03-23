@@ -27,7 +27,9 @@ router.get('/verify', verifyToken, (req, res) => {
 router.get('/classes', async (req, res) => {
     try {
         const db = require('../config/db');
-        const [classes] = await db.execute('SELECT DISTINCT classe FROM users WHERE classe IS NOT NULL AND classe != "" ORDER BY classe');
+        // Version PostgreSQL - utiliser '' au lieu de ""
+        const result = await db.execute("SELECT DISTINCT classe FROM users WHERE classe IS NOT NULL AND classe != '' ORDER BY classe");
+        const classes = result.rows;
 
         console.log("Classes trouvées :", classes);
 
